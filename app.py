@@ -1,27 +1,33 @@
 import streamlit as st
-from importlib import import_module
+import runpy
+import os
 
-# 很多舊範例使用不存在的 st.Page / st.navigation API。
-# 這裡改成用側邊欄的 selectbox 做簡單的多頁導航，並且要求每個頁面模組提供一個 app() 函式。
+# 定義頁面列表（標題、圖示、檔案名稱）
+PAGES = [
+    {"title": "專案首頁", "icon": "🏠", "file": "page_home.py"},
+    {"title": "Pydeck 3D互動地圖瀏覽", "icon": "🌏", "file": "page_3dmap-1.py"},
+    {"title": "Plotly 3D互動地圖瀏覽", "icon": "ℹ️", "file": "page_3dmap-2.py"},
+]
 
-PAGES = {
-    "首頁 🏠": "page_home",
-    "Plotly 3D 🌏": "page_3dmap-2",
-}
+st.set_page_config(page_title="3D GIS 專案", layout="wide")
 
-st.sidebar.title("導覽")
-choice = st.sidebar.selectbox("選擇頁面", list(PAGES.keys()))
+with st.sidebar:
+    st.title("關於我：自我介紹")
+    options = [f"{p['icon']} {p['title']}" for p in PAGES]
+    selected = st.selectbox("選擇頁面", options)
 
-module_name = PAGES[choice]
-try:
-    module = import_module(module_name)
-except Exception as e:
-    st.error(f"無法載入頁面模組 {module_name}: {e}")
+# 取得選擇頁面的檔案路徑
+selected_index = options.index(selected)
+page_info = PAGES[selected_index]
+base_dir = os.path.dirname(__file__)
+page_path = os.path.join(base_dir, page_info["file"])
+
+# 執行被選擇的頁面
+if not os.path.exists(page_path):
+    st.error(f"找不到頁面檔案：{page_info['file']}")
 else:
-    # 如果模組定義了 app()，呼叫它；否則嘗試以匯入時的行為顯示內容（較不安全）
-    if hasattr(module, "app"):
-        module.app()
-    else:
-        st.warning(f"模組 {module_name} 沒有定義 app()，將直接執行模組的頂層程式碼（若有）。")
-        # 直接執行模組頂層（匯入時已經執行），此處顯示訊息
-        # 若需要更嚴格的行為，請把頁面內容移到 app() 函式中。
+    try:
+        # 使用 runpy.run_path 執行選定的頁面檔案，讓該檔案內的 Streamlit 程式碼被執行
+        runpy.run_path(page_path, run_name="__main__")
+    except Exception as e:
+        st.error(f"載入頁面時發生錯誤：{e}")
